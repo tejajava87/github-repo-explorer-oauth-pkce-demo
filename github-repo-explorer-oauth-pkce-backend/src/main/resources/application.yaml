@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: Github-repo-explorer-backend
+
+  datasource:
+    url: jdbc:h2:file:./data/githubdb;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jackson:
+    write-dates-as-timestamps: false
+
+server:
+  port: 8080
+  servlet:
+    session:
+      tracking-modes: cookie
+      cookie:
+        same-site: LAX
+        secure: false
+        http-only: true
+
+app:
+  frontend-origin: "http://localhost:4200"
+
+github:
+  oauth:
+    client-id: "${GITHUB_CLIENT_ID}"
+    client-secret: "${GITHUB_CLIENT_SECRET}"
+    token-url: "https://github.com/login/oauth/access_token"
+  api:
+    base-url: "https://api.github.com"

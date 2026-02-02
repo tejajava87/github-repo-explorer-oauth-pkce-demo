@@ -1,0 +1,11 @@
+<div class="page">
+  <h2>Signing you in...</h2>
+
+  <p *ngIf="loading">Completing OAuth flow. Please wait.</p>
+
+  <div *ngIf="error" class="error">
+    <p>{{ error }}</p>
+    <button (click)="goToLogin()">Back to Login</button>
+  </div>
+</div>
+

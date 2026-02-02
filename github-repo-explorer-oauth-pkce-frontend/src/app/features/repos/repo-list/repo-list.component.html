@@ -1,0 +1,46 @@
+<div class="page">
+  <div class="header">
+    <h2>Your Repositories</h2>
+    <button (click)="logout()">Logout</button>
+  </div>
+
+  <input
+    class="search"
+    [ngModel]="q()"
+    (ngModelChange)="q.set($event)"
+    [ngModelOptions]="{ standalone: true }"
+    placeholder="Search repos by name..."
+    type="text"
+  />
+
+  <div *ngIf="loading()" style="text-align: center; padding: 40px;">
+    <p>⏳ Loading repositories...</p>
+  </div>
+
+  <p *ngIf="error()" class="error">{{ error() }}</p>
+
+  <div class="list" *ngIf="!loading() && !error()">
+    <div
+      class="card"
+      *ngFor="let r of filtered()"
+      (click)="openRepo(r)"
+      role="button"
+      tabindex="0"
+    >
+      <div class="title">{{ r.full_name }}</div>
+
+      <div class="meta">
+        <span *ngIf="r.language">📌 {{ r.language }}</span>
+        <span>⭐ {{ r.stargazers_count }}</span>
+      </div>
+
+      <div *ngIf="r.description" class="description">
+        {{ r.description }}
+      </div>
+    </div>
+
+    <p *ngIf="filtered().length === 0 && !loading()">
+      📭 No repositories found
+    </p>
+  </div>
+</div>

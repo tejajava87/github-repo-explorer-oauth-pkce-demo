@@ -1,0 +1,10 @@
+<div class="page">
+  <h2>GitHub Repo Explorer</h2>
+  <p>Sign in with GitHub to view your repositories.</p>
+
+  <button (click)="loginWithGithub()">
+    🔐 Login with GitHub
+  </button>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+</div>
