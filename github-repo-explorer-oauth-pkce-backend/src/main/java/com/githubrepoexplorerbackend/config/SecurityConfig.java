@@ -13,6 +13,17 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
+    private static final String[] SWAGGER_WHITELIST = {
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/swagger-ui.html",
+            "/swagger-ui",
+            "/swagger-ui/",
+            "/swagger-ui/**",
+            "/swagger-resources/**",
+            "/webjars/**"
+    };
+
     /**
      * Configure the Spring Security filter chain.
      * Execution:
@@ -47,7 +58,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         // Allow swagger / OpenAPI endpoints
-                        .requestMatchers("/v3/api-docs/**", "/v3/api-docs", "/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html").permitAll()
+                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated()

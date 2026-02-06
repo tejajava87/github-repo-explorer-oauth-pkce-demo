@@ -1,15 +1,19 @@
 package com.githubrepoexplorerbackend.service;
 
+import com.githubrepoexplorerbackend.entity.UserToken;
 import com.githubrepoexplorerbackend.exception.OAuthExchangeException;
+import com.githubrepoexplorerbackend.repository.UserTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.Map;
 
 @Service
@@ -27,6 +31,12 @@ public class GitHubOAuthService {
     private String tokenUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
+
+    private final UserTokenRepository tokenRepo;
+
+    public GitHubOAuthService(UserTokenRepository tokenRepo) {
+        this.tokenRepo = tokenRepo;
+    }
 
     /**
      * Exchange the authorization code for an access token at the OAuth provider.
@@ -71,4 +81,75 @@ public class GitHubOAuthService {
             throw new OAuthExchangeException("GitHub token exchange request failed", e);
         }
     }
+
+
+    /**
+     * Helper: fetch the GitHub user's login using the provided access token.
+     * <p>
+     * Execution steps:
+     * 1. Make GET https://api.github.com/user with Bearer authorization.
+     * 2. Return the `login` property from the response body.
+     * <p>
+     * Error modes:
+     * - Throws RuntimeException if the request fails or the response is malformed.
+     */
+    public String fetchGitHubLogin(String accessToken) {
+        var headers = new org.springframework.http.HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.set("Accept", "application/vnd.github+json");
+
+        var entity = new org.springframework.http.HttpEntity<>(headers);
+        try {
+            var response = restTemplate.exchange(
+                    "https://api.github.com/user",
+                    org.springframework.http.HttpMethod.GET,
+                    entity,
+                    Map.class
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.error("Failed to fetch GitHub user: status={} body={}", response.getStatusCode(), response.getBody());
+                throw new RuntimeException("Failed to fetch GitHub user");
+            }
+            return (String) response.getBody().get("login");
+        } catch (RestClientException e) {
+            log.error("Error fetching GitHub user", e);
+            throw new RuntimeException("Failed to fetch GitHub user", e);
+        }
+    }
+
+    /**
+     * Helper: persist or update the user's access token.
+     * <p>
+     * Execution:
+     * - Look up UserToken by githubLogin; if found, update fields and save; otherwise create a new entity.
+     * - Marked @Transactional to ensure DB operations are performed atomically.
+     */
+    @Transactional
+    public void saveOrUpdate(
+            String githubLogin,
+            String accessToken,
+            String tokenType,
+            String scope
+    ) {
+        log.info("Saving/updating token for user={}", githubLogin);
+        tokenRepo.findByGithubLogin(githubLogin)
+                .map(existing -> {
+                    existing.setAccessToken(accessToken);
+                    existing.setTokenType(tokenType);
+                    existing.setScope(scope);
+                    existing.setCreatedAt(Instant.now());
+                    return tokenRepo.save(existing);
+                })
+                .orElseGet(() -> {
+                    UserToken token = new UserToken();
+                    token.setGithubLogin(githubLogin);
+                    token.setAccessToken(accessToken);
+                    token.setTokenType(tokenType);
+                    token.setScope(scope);
+                    token.setCreatedAt(Instant.now());
+                    return tokenRepo.save(token);
+                });
+    }
+
 }

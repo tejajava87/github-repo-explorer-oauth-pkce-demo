@@ -5,17 +5,6 @@ The application showcases how enterprise systems securely authenticate users, ma
 
 ---
 
-## Project Structure
-
-```
-github-repo-explorer-oauth-pkce-demo/
-├── github-repo-explorer-oauth-pkce-frontend/   # Angular UI + PKCE flow
-├── github-repo-explorer-oauth-pkce-backend/    # Spring Boot API + token exchange
-└── README.md
-```
-
----
-
 ## 1) Register GitHub OAuth App (Client ID + Redirect URI)
 
 1. Go to **GitHub Developer Settings**  
@@ -34,88 +23,52 @@ github-repo-explorer-oauth-pkce-demo/
 
 ---
 
-## 2) Configure Environment & Variables
+## 2) GitHub API Endpoints Used
 
-### Backend (Spring Boot)
-Set these environment variables:
+### i. OAuth Authorization Endpoint
+
+```http
+GET https://github.com/login/oauth/authorize
+POST https://github.com/login/oauth/access_token
+GET https://api.github.com/user
+```
+
+**Purpose**
+
+* Starts the OAuth Authorization Code flow
+* Redirects the user to GitHub for consent
+* GitHub redirects back to your site with a temporary code
+* Exchange the code for an access token
+* Retrieves authenticated user info with token
+
+**Documentation**
 
 ```
-GITHUB_CLIENT_ID=your-client-id-here
-GITHUB_CLIENT_SECRET=your-client-secret-here
-```
-
-### Frontend (Angular)
-Edit:
-
-`github-repo-explorer-oauth-pkce-frontend/src/environments/environment.ts`
-
-Example:
-
-```ts
-export const environment = {
-  production: false,
-  apiBaseUrl: 'http://localhost:8080',
-  githubClientId: '<YOUR_CLIENT_ID>',
-  redirectUri: 'http://localhost:4200/auth/callback',
-  githubScopes: 'read:user repo'
-};
+https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 ```
 
 ---
 
-## 3) How to Run the App
+### ii. List Authenticated User Repositories
 
-### Backend (Spring Boot)
-```bash
-cd github-repo-explorer-oauth-pkce-backend
-mvn spring-boot:run
+```http
+GET https://api.github.com/user/repos
 ```
 
-Runs on: `http://localhost:8080`
+**Purpose**
 
----
+* Retrieves repositories owned by or accessible to the authenticated user
+* Used for the repository list screen
 
-### Frontend (Angular)
-```bash
-cd github-repo-explorer-oauth-pkce-frontend
-npm install
-npm start
+**Documentation**
+
+```
+https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user
 ```
 
-Runs on: `http://localhost:4200`
-
 ---
 
-## 4) GitHub API Endpoints Used
-
-### OAuth Authorization
-`GET https://github.com/login/oauth/authorize`  
-Starts the OAuth login/consent flow.  
-Docs: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
-
-### List Authenticated User Repositories
-`GET https://api.github.com/user/repos`  
-Fetches repos the user owns or can access.  
-Docs: https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user
-
-### Get Repository Details
-`GET https://api.github.com/repos/{owner}/{repo}`  
-Fetches details for a single repo.  
-Docs: https://docs.github.com/en/rest/repos/repos#get-a-repository
-
----
-
-## 5) Backend API Endpoints (App)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/exchange` | Exchange GitHub code for access token |
-| GET | `/api/auth/userstatus` | Get authenticated user info |
-| GET | `/api/repos` | List GitHub repositories |
-
----
-
-## 6) How AI Tools Were Used
+## 3) How AI Tools Were Used
 
 ### GitHub Copilot (Frontend + Backend)
 Used for:
@@ -128,31 +81,21 @@ Manual (no AI):
 - Session/token handling logic
 - upsert logic to update the user's access token.
 - Security configuration and sensitive auth logic
+- 
+### Why Manual Implementation Was Chosen
+
+- **Security**: Authentication/authorization code requires careful review and should not rely solely on AI-generated code
+- **Clarity**: Business logic flow benefits from explicit, readable code over optimized but opaque AI output
+- **Project-Specific Logic**: The upsert pattern is specific to this application's needs and required understanding the full context
 
 ---
 
-## 7) Known Limitations / Shortcuts
+## 4) Known Limitations / Shortcuts
 
 - No refresh token support
 - Minimal UI styling (focus on functionality)
 - No automated tests included
-- Single OAuth provider (GitHub only)
-- Token exchange assumes backend is available and trusted
 
-
-## OAuth 2.0 PKCE Flow (High Level)
-
-1. **Frontend**
-   - Generates `code_verifier` and `code_challenge`
-   - Redirects user to OAuth provider login
-   - Receives authorization code
-
-2. **Backend**
-   - Exchanges authorization code for access token
-   - Stores tokens securely
-   - Calls protected third-party APIs
-
-> PKCE ensures authorization security without exposing client secrets in the browser.
 
 ---
 

@@ -35,12 +35,9 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final GitHubOAuthService oAuthService;
-    private final UserTokenRepository tokenRepo;
-    private final RestTemplate restTemplate = new RestTemplate();
 
-    public AuthController(GitHubOAuthService oAuthService, UserTokenRepository tokenRepo) {
+    public AuthController(GitHubOAuthService oAuthService) {
         this.oAuthService = oAuthService;
-        this.tokenRepo = tokenRepo;
     }
 
     /**
@@ -81,10 +78,10 @@ public class AuthController {
         String scope = (String) tokenRes.getOrDefault("scope", "");
 
         // 1️ Fetch GitHub login
-        String githubLogin = fetchGitHubLogin(accessToken);
+        String githubLogin = oAuthService.fetchGitHubLogin(accessToken);
 
         // 2 Upsert token
-        saveOrUpdate(
+        oAuthService.saveOrUpdate(
                 githubLogin,
                 accessToken,
                 tokenType,
@@ -115,75 +112,6 @@ public class AuthController {
 
         // 5  Explicit success response
         return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Helper: fetch the GitHub user's login using the provided access token.
-     * <p>
-     * Execution steps:
-     * 1. Make GET https://api.github.com/user with Bearer authorization.
-     * 2. Return the `login` property from the response body.
-     * <p>
-     * Error modes:
-     * - Throws RuntimeException if the request fails or the response is malformed.
-     */
-    private String fetchGitHubLogin(String accessToken) {
-        var headers = new org.springframework.http.HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.set("Accept", "application/vnd.github+json");
-
-        var entity = new org.springframework.http.HttpEntity<>(headers);
-        try {
-            var response = restTemplate.exchange(
-                    "https://api.github.com/user",
-                    org.springframework.http.HttpMethod.GET,
-                    entity,
-                    Map.class
-            );
-
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                log.error("Failed to fetch GitHub user: status={} body={}", response.getStatusCode(), response.getBody());
-                throw new RuntimeException("Failed to fetch GitHub user");
-            }
-            return (String) response.getBody().get("login");
-        } catch (RestClientException e) {
-            log.error("Error fetching GitHub user", e);
-            throw new RuntimeException("Failed to fetch GitHub user", e);
-        }
-    }
-
-    /**
-     * Helper: persist or update the user's access token.
-     * <p>
-     * Execution:
-     * - Look up UserToken by githubLogin; if found, update fields and save; otherwise create a new entity.
-     * - Marked @Transactional to ensure DB operations are performed atomically.
-     */
-    @Transactional
-    public void saveOrUpdate(
-            String githubLogin,
-            String accessToken,
-            String tokenType,
-            String scope
-    ) {
-        log.info("Saving/updating token for user={}", githubLogin);
-        tokenRepo.findByGithubLogin(githubLogin)
-                .map(existing -> {
-                    existing.setAccessToken(accessToken);
-                    existing.setTokenType(tokenType);
-                    existing.setScope(scope);
-                    existing.setCreatedAt(Instant.now());
-                    return tokenRepo.save(existing);
-                })
-                .orElseGet(() -> {
-                    UserToken token = new UserToken();
-                    token.setGithubLogin(githubLogin);
-                    token.setAccessToken(accessToken);
-                    token.setTokenType(tokenType);
-                    token.setScope(scope);
-                    token.setCreatedAt(Instant.now());
-                    return tokenRepo.save(token);
-                });
     }
 
     /**
@@ -218,5 +146,8 @@ public class AuthController {
     public void logout(HttpSession session) {
         session.invalidate();
     }
+
+
+
 
 }
